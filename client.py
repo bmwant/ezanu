@@ -1,3 +1,6 @@
+import csv
+
+import click
 from telethon import TelegramClient
 from telethon.tl.types import PeerUser
 
@@ -15,8 +18,16 @@ def list_dialogs(client):
             print(dialog.to_dict())
 
 
-def print_messages():
-    pass
+def print_message(message):
+    if not config.DEBUG_PRINT:
+        return
+
+    if message.from_id == config.CURRENT_USER_ID:
+        click.secho(message.message, fg='blue')
+    elif message.from_id == config.TARGET_USER_ID:
+        click.secho(message.message, fg='yellow')
+    else:
+        click.echo(message.to_dict())
 
 
 def main():
@@ -26,11 +37,22 @@ def main():
     # me = client.sign_in(code='27105')
     me = client.get_me()
     target_user = client.get_entity(config.TARGET_USER_ID)
-    total_messages, messages, _ = client.get_message_history(config.TARGET_USER_ID)
-    for message in messages:
-        print(message.message)
-        import pdb; pdb.set_trace()
-    # print(mh)
+    limit = None
+    total_messages, messages, users = client.get_message_history(config.TARGET_USER_ID, limit=limit)
+    header = ['id', 'from_id', 'to_id', 'date', 'message', 'is_media', 'is_edited']
+    with open('message_history.csv', 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        for message in messages:
+            print_message(message)
+            is_media = message.media is not None
+            is_edited = message.edit_date is not None
+            row = [message.id, message.from_id, message.to_id.user_id, message.date,
+                   message.message, is_media, is_edited]
+            writer.writerow(row)
+            if message.views is not None:
+                print('What are those?')
+                import pdb; pdb.set_trace()
 
 
 if __name__ == '__main__':
